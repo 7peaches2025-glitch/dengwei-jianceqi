@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>登味检测器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #fdf6f0; --card-bg: #fffefb; --text: #3d3226;
+    --text-light: #8c7b6b; --accent: #d4534a; --accent-light: #fdf0ee;
+    --gold: #c4953a; --gold-light: #fbf3e0; --border: #e8d5c4;
+    --shadow: 0 4px 24px rgba(61,50,38,.08);
+  }
+  body {
+    font-family: "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7; min-height: 100vh;
+  }
+
+  /* ====== START PAGE ====== */
+  .start-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; text-align: center; }
+  .start-page .icon { font-size: 64px; margin-bottom: 12px; }
+  .start-page h1 { font-size: 36px; font-weight: 900; color: var(--accent); letter-spacing: 2px; margin-bottom: 8px; }
+  .start-page .subtitle { font-size: 15px; color: var(--text-light); margin-bottom: 32px; }
+  .start-page .rules {
+    background: var(--card-bg); border-radius: 16px; padding: 20px 24px;
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    max-width: 400px; text-align: left; margin-bottom: 32px; font-size: 14px; line-height: 2;
+  }
+  .start-page .rules span { color: var(--accent); font-weight: 700; }
+
+  .btn-start {
+    display: inline-block; padding: 16px 56px; border-radius: 36px;
+    font-size: 20px; font-weight: 800; cursor: pointer; border: none;
+    background: linear-gradient(135deg, var(--accent), #e0695f);
+    color: #fff; box-shadow: 0 6px 24px rgba(212,83,74,.35);
+    letter-spacing: 2px; transition: all .3s ease;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    position: relative; z-index: 9999; pointer-events: auto;
+  }
+  .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(212,83,74,.45); }
+  .btn-start:active { transform: scale(0.96); }
+
+  /* ====== QUIZ PAGE ====== */
+  .quiz-page { display: none; padding: 32px 20px 60px; max-width: 600px; margin: 0 auto; }
+  .quiz-page.active { display: block; }
+
+  .quiz-header { text-align: center; margin-bottom: 24px; }
+  .quiz-header .q-counter { font-size: 13px; color: var(--text-light); margin-bottom: 6px; }
+  .quiz-header .q-counter strong { color: var(--accent); font-size: 18px; }
+
+  .progress-wrap {
+    background: #fff; border-radius: 20px; height: 6px;
+    margin-bottom: 28px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--gold), var(--accent));
+    border-radius: 20px; transition: width .5s ease; width: 0%;
+  }
+
+  .question-card {
+    background: var(--card-bg); border-radius: 18px; padding: 28px 24px 8px;
+    border: 1.5px solid var(--border); box-shadow: var(--shadow);
+    margin-bottom: 20px; animation: fadeIn .35s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .q-text { font-size: 18px; font-weight: 700; margin-bottom: 20px; line-height: 1.6; }
+
+  .option {
+    display: flex; align-items: center; padding: 14px 16px; margin-bottom: 10px;
+    border-radius: 14px; border: 2px solid var(--border); cursor: pointer;
+    transition: all .2s ease; background: #fffefb;
+  }
+  .option:active { transform: scale(.98); }
+  .option.selected {
+    border-color: var(--accent); background: var(--accent-light);
+    box-shadow: 0 0 0 3px rgba(212,83,74,.12);
+  }
+  .option-letter {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #f5ede4; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; color: var(--text-light);
+    flex-shrink: 0; margin-right: 14px; transition: all .2s ease;
+  }
+  .option.selected .option-letter { background: var(--accent); color: #fff; transform: scale(1.1); }
+  .option-text { font-size: 15px; flex: 1; }
+
+  .btn-next {
+    display: block; width: 100%; max-width: 400px; margin: 0 auto;
+    padding: 15px; border-radius: 30px; font-size: 17px; font-weight: 700;
+    cursor: pointer; border: none; letter-spacing: 1px; transition: all .3s ease;
+  }
+  .btn-next.enabled {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 4px 16px rgba(212,83,74,.3);
+  }
+  .btn-next.enabled:hover { background: #c0423a; transform: translateY(-1px); }
+  .btn-next.disabled {
+    background: #e8d5c4; color: #b8a89a; cursor: default; pointer-events: none;
+  }
+
+  /* ====== RESULT PAGE ====== */
+  .result-page { display: none; padding: 32px 20px 60px; max-width: 600px; margin: 0 auto; }
+  .result-page.active { display: block; }
+
+  .result-card {
+    background: var(--card-bg); border-radius: 20px;
+    border: 2px solid var(--border); box-shadow: 0 8px 40px rgba(61,50,38,.1);
+    padding: 36px 28px 24px; text-align: center; position: relative; overflow: hidden;
+  }
+  .result-card::before {
+    content: ''; position: absolute; top: -60px; right: -60px;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(212,83,74,.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .result-badge {
+    display: inline-block; font-size: 28px; font-weight: 900;
+    padding: 10px 28px; border-radius: 30px; margin-bottom: 12px; letter-spacing: 1px;
+  }
+  .result-badge.lv0 { background:#e8f5e9; color:#2e7d32; }
+  .result-badge.lv1 { background:#e3f2fd; color:#1565c0; }
+  .result-badge.lv2 { background:#fff8e1; color:#f57f17; }
+  .result-badge.lv3 { background:#fbe9e7; color:#bf360c; }
+  .result-badge.lv4 { background:#f3e5f5; color:#6a1b9a; }
+  .result-badge.lv5 { background:#ffebee; color:#b71c1c; border:2px solid #b71c1c; }
+
+  .result-score { font-size: 15px; color: var(--text-light); margin-bottom: 20px; }
+  .result-score strong { font-size: 44px; color: var(--accent); font-weight: 900; display: block; line-height: 1.1; margin-bottom: 2px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 20px 0; }
+  .stat-item { background:#fdf6f0; border-radius:14px; padding:14px 8px; text-align:center; }
+  .stat-value { font-size:22px; font-weight:800; color:var(--accent); line-height:1.2; }
+  .stat-label { font-size:11px; color:var(--text-light); margin-top:4px; }
+
+  .pollution-stars { font-size:20px; letter-spacing:3px; margin:10px 0 2px; }
+
+  .comment-box {
+    background:#fdf6f0; border-radius:14px; padding:18px 20px; margin:18px 0;
+    text-align:left; font-size:15px; line-height:1.8; position:relative;
+  }
+  .comment-box::before { content:'💬'; position:absolute; top:-15px; left:18px; font-size:22px; }
+  .comment-label { font-weight:700; color:var(--accent); margin-right:4px; }
+
+  .danger-box {
+    border:1.5px dashed #ff8a65; border-radius:14px; padding:14px 18px; margin:14px 0;
+    background:#fff3e0; text-align:left; font-size:14px; line-height:1.8;
+  }
+  .danger-label { font-weight:700; color:#e65100; margin-right:4px; }
+
+  .result-footer { margin-top:16px; font-size:13px; color:var(--text-light); }
+
+  /* Rating reference */
+  .rating-ref-title { text-align:center; font-size:15px; margin:32px 0 16px; color:var(--text-light); font-weight:600; }
+  .level-cards { display:flex; flex-direction:column; gap:10px; }
+  .level-card {
+    background:var(--card-bg); border-radius:14px; border:1.5px solid var(--border);
+    padding:14px 16px; display:flex; align-items:center; gap:14px; opacity:.55; transition:all .3s ease;
+  }
+  .level-card.highlight {
+    opacity:1; border-color:var(--accent);
+    box-shadow:0 4px 20px rgba(212,83,74,.15); background:#fffaf9;
+  }
+  .level-tag { padding:5px 12px; border-radius:20px; font-weight:700; font-size:13px; white-space:nowrap; flex-shrink:0; }
+  .level-tag.lv0 { background:#e8f5e9; color:#2e7d32; }
+  .level-tag.lv1 { background:#e3f2fd; color:#1565c0; }
+  .level-tag.lv2 { background:#fff8e1; color:#f57f17; }
+  .level-tag.lv3 { background:#fbe9e7; color:#bf360c; }
+  .level-tag.lv4 { background:#f3e5f5; color:#6a1b9a; }
+  .level-tag.lv5 { background:#ffebee; color:#b71c1c; }
+
+  .level-info { flex:1; min-width:0; }
+  .level-info .level-title { font-weight:700; font-size:14px; margin-bottom:2px; }
+  .level-info .level-detail { font-size:12px; color:var(--text-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .btn-row { text-align:center; margin-top:24px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn-retake {
+    padding:10px 32px; border-radius:24px; font-size:15px; font-weight:600; cursor:pointer;
+    border:1.5px solid var(--border); background:#fff; color:var(--text); transition:all .2s ease;
+  }
+  .btn-retake:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-share {
+    padding:10px 32px; border-radius:24px; font-size:15px; font-weight:700; cursor:pointer;
+    border:none; background:var(--accent); color:#fff; transition:all .2s ease;
+  }
+  .btn-share:hover { background:#c0423a; }
+
+  .screenshot-tip { text-align:center; margin-top:16px; font-size:13px; color:var(--text-light); }
+
+  /* Toast */
+  .toast {
+    position:fixed; top:20px; left:50%; transform:translateX(-50%);
+    background:var(--accent); color:#fff; padding:10px 24px; border-radius:30px;
+    font-size:14px; font-weight:600; z-index:999; opacity:0; transition:opacity .3s ease;
+    pointer-events:none;
+  }
+  .toast.show { opacity:1; }
+
+  @media (max-width:500px) {
+    .start-page h1 { font-size:28px; }
+    .quiz-page { padding:20px 14px 60px; }
+    .question-card { padding:22px 16px 6px; }
+    .q-text { font-size:16px; }
+    .result-card { padding:24px 16px 20px; }
+    .result-badge { font-size:22px; padding:8px 18px; }
+    .result-score strong { font-size:36px; }
+    .stats-grid { gap:8px; }
+    .stat-item { padding:10px 6px; }
+    .stat-value { font-size:18px; }
+  }
+
+  /* Mobile touch fixes */
+  button, .option {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .btn-start {
+    -webkit-appearance: none;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  @media (max-width:500px) {
+    .btn-start { padding:18px 48px; font-size:19px; border-radius:32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ==================== START PAGE ==================== -->
+<div class="start-page" id="startPage">
+  <div class="icon">🧪</div>
+  <h1>登味检测器</h1>
+  <p class="subtitle">科学评估你的"登味"浓度 · 结果仅供娱乐</p>
+  <div class="rules">
+    🧾 <span>共 12 题</span>，每题 4 个选项<br>
+    🅰️ A = 0 分 · 🅱️ B = 1 分<br>
+    ©️ C = 2 分 · 🅳 D = 3 分<br>
+    📊 满分 36，逐题选择后自动进入下一题<br>
+    🏆 最后展示你的登味等级
+  </div>
+  <noscript><div style="color:#d4534a;text-align:center;padding:20px;font-weight:bold;font-size:16px;">⚠️ 请开启JavaScript后使用本页面</div></noscript>
+  <div id="jsCheck" style="color:#2e7d32;text-align:center;font-size:12px;margin-top:8px;display:none;">✓ 脚本已就绪</div>
+  <a class="btn-start" id="btnStart" href="javascript:void(0)" onclick="startQuiz();return false" ontouchend="startQuiz();return false" style="text-decoration:none;display:inline-block;">🧬 开始检测</a>
+</div>
+
+<!-- ==================== QUIZ PAGE ==================== -->
+<div class="quiz-page" id="quizPage">
+  <div class="quiz-header">
+    <div class="q-counter">第 <strong id="qCurrent">1</strong> / 12 题</div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="question-card" id="questionCard"></div>
+  <button class="btn-next disabled" id="btnNext" onclick="nextQuestion()">下一题 →</button>
+</div>
+
+<!-- ==================== RESULT PAGE ==================== -->
+<div class="result-page" id="resultPage">
+  <div id="resultContent"></div>
+  <div class="btn-row">
+    <button class="btn-retake" id="btnRetake" onclick="retakeQuiz()">← 重新检测</button>
+    <button class="btn-share" id="btnShare" onclick="shareResult()">📤 分享结果</button>
+  </div>
+  <div class="screenshot-tip">📸 截图分享给朋友，看看谁才是"登味天花板"</div>
+</div>
+
+<script>
+// ======== DATA ========
+var questions = [
+  { id:1, text:"饭桌上，有人跟你聊起一个你完全不懂的新兴领域，你的第一反应是：",
+    opts:["安静听完，不懂就问。","说：\"你这个跟我以前搞的XX其实是一回事。\"","打断：\"别被概念忽悠，先把眼前的事做好。\"","开始讲自己踩过的坑，试图拉回你的轨道。"] },
+  { id:2, text:"朋友圈看到同事深夜加班照，配文"又一天"，你会：",
+    opts:["点赞或"辛苦了"。","评论："要平衡，别太拼。"（潜台词：效率不行）","私信："这不算什么，我当年通宵家常便饭。"","截图发部门群@所有人："看看这位，大家学学。""] },
+  { id:3, text:"争论时对方搬出数据和论文，你的反应：",
+    opts:["感兴趣，请对方展开。","说："理论是灰色的，实践出真知。"","说："我就说个大概，你还真去查资料？"","从经历出发："等你经历多了就懂了。""] },
+  { id:4, text:"新同事说自己喜欢"躺平"，你会：",
+    opts:["好奇问清楚。","心里摇头，但不说。","半开玩笑："躺平？那来上班干嘛？"","把人叫到一边，上一堂"工作态度"课。"] },
+  { id:5, text:"家庭群里，有人转发了一条关于年轻人"断亲"现象的讨论帖：",
+    opts:[""看看就好，别太当真。"",""现在年轻人确实跟我们那时候不一样了。"",""什么断亲不断亲的，说到底就是没家教。"","@所有人 \"等你们到了我这个年纪，就知道亲情有多重要了。现在不懂事，以后要后悔的。\""] },
+  { id:6, text:"你给建议对方没听，后来他吃了亏，你会：",
+    opts:["安慰他。","心里暗爽，不说。","说出口："你看，我怎么说来着？"","抓住机会，展开半小时复盘，要求他写总结。"] },
+  { id:7, text:"公共场合看不惯别人的做法，你会：",
+    opts:["关我屁事。","小声吐槽。","直接纠正："你这样不对。"","不仅纠正，还向周围人普及"正确做法"。"] },
+  { id:8, text:"你觉得现在的短视频/热梗大部分是：",
+    opts:["有好有坏，自己筛选。","无聊低俗，浪费时间。","\"奶头乐\"，资本异化（且常饭桌上宣讲）。","除了我发的，其他不值一看。"] },
+  { id:9, text:"朋友跟你说他最近在学一门新技能（比如摄影、乐器、编程），花了挺多钱报了班。你：",
+    opts:["\"挺好的，学成了教我。\"","\"嗯，有兴趣就学呗。\"","\"学这个有什么用？能变现吗？别一时冲动浪费钱。\"","\"你要学早该跟我说啊，我认识人，比你自己瞎报班强。你这种性格我太了解了，坚持不过三个月，那钱就是打水漂。\""] },
+  { id:10, text:"你在业主群/工作群/兴趣社群里，看到有人提议一项公共事务，你觉得方案很不靠谱、漏洞百出，你会：",
+    opts:["心里觉得蠢，但懒得参与，让他们折腾去。","简单指出一两个问题，但不多说。","在群里逐条列出方案的漏洞，并给出你自己的改进建议。","不仅长篇大论分析，还@所有人，要求大家必须按你的方案来，否则就是\"瞎搞\"。"] },
+  { id:11, text:"朋友倾诉焦虑，你觉得他需要：",
+    opts:["倾听共情。","告诉他"想太多，行动起来"。","给一套"我当年如何走出困境"的方法论。","说："你就是闲的，忙起来就好了。""] },
+  { id:12, text:"有人当面说你"有点登"，你的反应：",
+    opts:["好奇："登是什么意思？"","一愣，自嘲："是吗？我改。"","不爽，觉得对方没大没小。","不会发生，因为没人敢当面说。"] }
+];
+
+var levels = [
+  { range:[0,6], title:"无登之人", conc:"5%", breakR:"5%（几乎无人因你破防）", poll:0, pollT:"（你是群里的清新空气）",
+    comment:"你与登味毫无关系，甚至能净化周围空气。你的存在让朋友们相信，这世界还有正常人。",
+    danger:"小心被登学宗师盯上，他们会把你当作"未经雕琢的璞玉"，试图将你拉入登门。", emoji:"🌿", cls:"lv0" },
+  { range:[7,12], title:"初窥登径", conc:"20%", breakR:"20%（偶尔有人暗自皱眉）", poll:1, pollT:"（轻微，尚可忍受）",
+    comment:"你偶尔冒出的一句说教，像极了不小心撒出的盐，无伤大雅但略显多余。朋友们会宽容地笑笑，心里默默记下一笔。",
+    danger:"建议每天默念"关我屁事"和"管好自己"各三遍，可有效延缓登化进程。", emoji:"🌱", cls:"lv1" },
+  { range:[13,18], title:"小登怡情", conc:"40%", breakR:"40%（已有朋友开始委婉提醒）", poll:2, pollT:"（你的发言开始让群聊降温）",
+    comment:"你的登味像香菜——爱的人觉得香，恨的人觉得臭。朋友们开始用"好的，登老师"来回应你，你以为是玩笑，其实他们是认真的。",
+    danger:"当你发现群聊在你发言后出现三秒以上的沉默，请立即撤回并发表情包救场。", emoji:"🌶️", cls:"lv2" },
+  { range:[19,24], title:"一登大师", conc:"65%", breakR:"70%（大多数人已默默忍耐）", poll:3, pollT:"（你开口，话题终结）",
+    comment:"你已经成功让饭局话题在你开口后三秒内自然死亡。你的口头禅"不是我说你"已经成为朋友们的心理阴影。你不是在登，就是在去登的路上。",
+    danger:"每说一次"我当年"，建议向群聊发一个红包作为精神赔偿。", emoji:"🎭", cls:"lv3" },
+  { range:[25,30], title:"登学宗师", conc:"80%", breakR:"90%（破防已成家常便饭）", poll:4, pollT:"（你的存在就是一场精神污染）",
+    comment:"你把登味打磨成了个人标签，别人模仿不来，你卸不下去。你的登味已经形成了一套自洽的哲学体系，任何反驳在你眼中都是"年轻人不懂事"。",
+    danger:"建议聘请一位"防登助理"，在你准备长篇大论时用力掐你大腿。若无人应聘，请将本检测结果设为手机锁屏。", emoji:"⚡", cls:"lv4" },
+  { range:[31,36], title:"登峰造极", conc:"95%（你就是标杆）", breakR:"99%（接近物理破防）", poll:5, pollT:"（核爆级，已无人生还）",
+    comment:"你的登味已经完成了从行为到气质的跃迁。你不需要刻意抽象，因为你本身就是抽象的发生地。你不是在检测，你是在照镜子。",
+    danger:"建议谨慎发言，因为你随便一句话都可能被朋友截图做成群头像。同时，你已被列入"群聊保护性禁言"候选名单。", emoji:"👑", cls:"lv5" }
+];
+
+// ======== STATE ========
+var answers = [];
+var currentQ = 0;
+
+// Signal that JS has loaded
+(function() {
+  var el = document.getElementById('jsCheck');
+  if (el) { el.style.display = 'block'; }
+})();
+
+// ======== START ========
+function startQuiz() {
+  answers = [];
+  for (var i = 0; i < 12; i++) answers[i] = -1;
+  currentQ = 0;
+  document.getElementById('startPage').style.display = 'none';
+  document.getElementById('quizPage').classList.add('active');
+  document.getElementById('resultPage').classList.remove('active');
+  document.getElementById('resultPage').style.display = 'none';
+  document.getElementById('btnNext').textContent = '下一题 →';
+  renderQuestion();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======== RENDER QUESTION ========
+function renderQuestion() {
+  var q = questions[currentQ];
+  var labels = ['A','B','C','D'];
+  var sel = answers[currentQ];
+
+  document.getElementById('qCurrent').textContent = currentQ + 1;
+  document.getElementById('progressBar').style.width = Math.round((currentQ / 12) * 100) + '%';
+
+  var html = '<div class="q-text">' + q.text + '</div>';
+  for (var i = 0; i < q.opts.length; i++) {
+    var cls = sel === i ? ' selected' : '';
+    html += '<div class="option' + cls + '" onclick="selectOption(' + i + ')">';
+    html += '<span class="option-letter">' + labels[i] + '</span>';
+    html += '<span class="option-text">' + q.opts[i] + '</span>';
+    html += '</div>';
+  }
+
+  document.getElementById('questionCard').innerHTML = html;
+  updateNextBtn();
+}
+
+// ======== SELECT OPTION ========
+function selectOption(idx) {
+  answers[currentQ] = idx;
+  var opts = document.getElementById('questionCard').querySelectorAll('.option');
+  for (var i = 0; i < opts.length; i++) {
+    if (i === idx) {
+      opts[i].classList.add('selected');
+    } else {
+      opts[i].classList.remove('selected');
+    }
+  }
+  updateNextBtn();
+  if (currentQ < 11) {
+    setTimeout(function() { nextQuestion(); }, 400);
+  } else {
+    document.getElementById('btnNext').textContent = '🔍 查看检测结果';
+  }
+}
+
+// ======== UPDATE NEXT BTN ========
+function updateNextBtn() {
+  var sel = answers[currentQ];
+  var btn = document.getElementById('btnNext');
+  if (sel >= 0) {
+    btn.className = 'btn-next enabled';
+    if (currentQ >= 11) {
+      btn.textContent = '🔍 查看检测结果';
+    } else {
+      btn.textContent = '下一题 →';
+    }
+  } else {
+    btn.className = 'btn-next disabled';
+    btn.textContent = '下一题 →';
+  }
+}
+
+// ======== NEXT QUESTION ========
+function nextQuestion() {
+  if (answers[currentQ] < 0) {
+    showToast('请先选择一个选项');
+    return;
+  }
+  if (currentQ >= 11) {
+    showResult();
+    return;
+  }
+  currentQ++;
+  renderQuestion();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======== RESULT ========
+function showResult() {
+  var total = 0;
+  for (var i = 0; i < 12; i++) total += answers[i];
+
+  var li = 0;
+  for (var i = 0; i < levels.length; i++) {
+    if (total >= levels[i].range[0] && total <= levels[i].range[1]) { li = i; break; }
+  }
+  var lv = levels[li];
+  var stars = '';
+  for (var s = 0; s < lv.poll; s++) stars += '★';
+  for (var s = lv.poll; s < 5; s++) stars += '☆';
+
+  var refHtml = '';
+  for (var i = 0; i < levels.length; i++) {
+    var l = levels[i];
+    var h = i === li ? ' highlight' : '';
+    var rs = '';
+    for (var s = 0; s < l.poll; s++) rs += '★';
+    for (var s = l.poll; s < 5; s++) rs += '☆';
+    refHtml += '<div class="level-card' + h + '"><span class="level-tag ' + l.cls + '">' + l.emoji + ' ' + l.title + '</span><div class="level-info"><div class="level-title">' + l.range[0] + '～' + l.range[1] + ' 分 · 浓度 ' + l.conc + '</div><div class="level-detail">污染力 ' + rs + ' · ' + l.breakR + '</div></div></div>';
+  }
+
+  document.getElementById('resultContent').innerHTML =
+    '<div class="result-card">' +
+      '<span class="result-badge ' + lv.cls + '">' + lv.emoji + ' ' + lv.title + '</span>' +
+      '<div class="result-score"><strong>' + total + '</strong>分 / 36 分</div>' +
+      '<div class="stats-grid">' +
+        '<div class="stat-item"><div class="stat-value">' + lv.conc + '</div><div class="stat-label">登味浓度</div></div>' +
+        '<div class="stat-item"><div class="stat-value">' + lv.breakR + '</div><div class="stat-label">破防概率</div></div>' +
+        '<div class="stat-item"><div class="pollution-stars">' + stars + '</div><div class="stat-label">群聊污染力' + lv.pollT + '</div></div>' +
+      '</div>' +
+      '<div class="comment-box"><span class="comment-label">评语</span>' + lv.comment + '</div>' +
+      '<div class="danger-box"><span class="danger-label">⚠ 危险提示</span>' + lv.danger + '</div>' +
+      '<div class="result-footer">检测完毕，欢迎截图分享给你的朋友们 😂<br><small>（温馨提示：能笑着接受结果的人，离"脱登"就不远了。）</small></div>' +
+    '</div>' +
+    '<div class="rating-ref-title">—— 完整评级参考 ——</div>' +
+    '<div class="level-cards">' + refHtml + '</div>';
+
+  document.getElementById('quizPage').classList.remove('active');
+  document.getElementById('resultPage').classList.add('active');
+  document.getElementById('resultPage').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======== RETAKE ========
+function retakeQuiz() {
+  answers = [];
+  for (var i = 0; i < 12; i++) answers[i] = -1;
+  currentQ = 0;
+  document.getElementById('resultPage').classList.remove('active');
+  document.getElementById('resultPage').style.display = 'none';
+  document.getElementById('startPage').style.display = '';
+  document.getElementById('quizPage').classList.remove('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======== SHARE ========
+function shareResult() {
+  if (navigator.share) {
+    navigator.share({ title: '登味检测器结果', text: '来看看我的登味等级！', url: window.location.href }).catch(function(){});
+  } else {
+    showToast('请长按截图分享 📸');
+  }
+}
+
+// ======== TOAST ========
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+</script>
+</body>
+</html>
